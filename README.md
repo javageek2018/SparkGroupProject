@@ -1,6 +1,7 @@
 # Data Introduction
 
-This project utilizes the NYC FHVHV Trip Dataset curated by Jeff Sinsel, 
+This project utilizes the NYC FHVHV Trip Dataset, curated by Jeff Sinsel
+using data from the NYC Taxi and Limousine Commission (TLC), 
 which contains comprehensive records of hundreds of millions of rides 
 from high-volume ride-hailing service providers like Uber, Lyft, and Via 
 between 2019 and 2022. The data can be found at 
