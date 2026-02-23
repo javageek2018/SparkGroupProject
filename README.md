@@ -50,6 +50,9 @@ This configuration ensures: - One core reserved for the driver -
 Parallel execution across executor slots - Balanced memory distribution
 for shuffle-heavy operations
 
+## Spark UI
+
+![Spark UI](images/spark-ui-screenshot.png "Spark UI")
 
 ## SparkSession Configuration
 
