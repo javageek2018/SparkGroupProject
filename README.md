@@ -59,29 +59,24 @@ for shuffle-heavy operations
 ``` python
 spark = (
     SparkSession.builder
-    .appName("fhvhv-dedup")
-    .master("local[*]")
-    .config("spark.driver.memory", "90g")
-    .config("spark.driver.maxResultSize", "4g")
+    .config("spark.local.dir", spark_tmp)
+    .config("spark.driver.memory", "2g")
+    .config("spark.executor.memory", "18g")
+    .config('spark.executor.instances', 7)
     .config("spark.sql.shuffle.partitions", "4000")
-    .config("spark.sql.files.maxPartitionBytes", "128m")
-    .config("spark.local.dir", os.environ["TMPDIR"])
     .getOrCreate()
 )
 ```
 
 ### Justification
 
--   spark.driver.memory = 90g
+-   spark.driver.memory = 2g
     Prevents driver-side memory pressure while leaving sufficient memory
     for executors.
 
 -   spark.sql.shuffle.partitions = 4000
     Increased from default to reduce shuffle spill during deduplication
     of hundreds of millions of rows.
-
--   spark.sql.files.maxPartitionBytes = 128m
-    Improves parallelism when loading large parquet files.
 
 -   spark.local.dir = TMPDIR
     Ensures shuffle spill occurs on high-speed scratch disk instead of
