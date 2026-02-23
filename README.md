@@ -21,7 +21,7 @@ operations such as deduplication, aggregations, and feature engineering.
 For large-scale preprocessing (deduplication + aggregations), the
 following resources were requested:
 
--   Total Cores: 32
+-   Total Cores: 8
 -   Total Memory: 128 GB
 
 These resources were selected to ensure sufficient memory for wide
