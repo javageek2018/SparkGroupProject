@@ -37,14 +37,14 @@ Executor Memory = (Total Memory - Driver Memory) / Executor Instances
 
 Applied configuration:
 
--   Total Cores = 32
+-   Total Cores = 8
 -   Total Memory = 128 GB
 -   Driver Memory = 8 GB
 
-Executor Instances = 32 - 1 = 31
+Executor Instances = 8 - 1 = 7
 
-Executor Memory = (128 - 8) / 31\
-Executor Memory ≈ 3.87 GB per executor
+Executor Memory = (128 - 8) / 7\
+Executor Memory ≈ 17.14 GB per executor
 
 This configuration ensures: - One core reserved for the driver -
 Parallel execution across executor slots - Balanced memory distribution
