@@ -115,3 +115,8 @@ require wide transformations and shuffle stages.
 The distributed executor configuration allowed: - Stable shuffle
 performance - Reduced disk spill failures - Successful persistence of a
 cleaned Parquet dataset
+
+- [EDA notebook](https://github.com/javageek2018/SparkGroupProject/blob/Milestone2/eda_232r.ipynb)
+- [Pre-processing notebook](https://github.com/javageek2018/SparkGroupProject/blob/Milestone3/preprocess_232r.ipynb)
+
+
