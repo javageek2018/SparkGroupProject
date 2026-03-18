@@ -1,122 +1,98 @@
-# Data Introduction
+# NYC Uber/Lyft Tip Prediction on Large-Scale Trip Data
 
-This project utilizes the NYC FHVHV Trip Dataset, curated by Jeff Sinsel
-using data from the NYC Taxi and Limousine Commission (TLC), 
-which contains comprehensive records of hundreds of millions of rides 
-from high-volume ride-hailing service providers like Uber, Lyft, and Via 
-between 2019 and 2022. The data can be found at 
+- [EDA Notebook](https://github.com/javageek2018/SparkGroupProject/blob/Milestone2/eda_232r.ipynb)
+- [First Model Notebook](https://github.com/javageek2018/SparkGroupProject/blob/Milestone3/preprocess_232r.ipynb)
+- [Final Model Notebook](https://github.com/javageek2018/SparkGroupProject/blob/Milestone4/final_model_232r.ipynb)
+
+## Introduction
+
+This project focuses on predicting whether a customer will leave a tip for a ride using large-scale trip data. Tipping behavior is influenced by a combination of trip characteristics, passenger behavior, and contextual factors, making it a challenging and meaningful prediction task. Accurately modeling this behavior can provide insights into customer decision-making and inform downstream applications such as driver incentives, pricing strategies, and service optimization.
+
+From a machine learning perspective, this problem involves high-dimensional tabular data with complex relationships between features. Traditional models can struggle to capture these interactions efficiently, especially at scale. To address this, we apply dimensionality reduction using Singular Value Decomposition (SVD) to compress the feature space while preserving important structure.
+
+From a systems perspective, this project requires big data and distributed computing. Processing millions of trip records, performing matrix factorization, and training models would be impractical on a single machine. Using Apache Spark enables scalable data processing and distributed model training.
+
+Dataset can be found here:
 https://www.kaggle.com/datasets/jeffsinsel/nyc-fhvhv-data
 
-# SDSC Expanse Spark Setup
+## Figures
 
-## Environment Overview
+![Figure 1](images/figure1.png "Figure 1")
 
-This project was executed on SDSC Expanse using an interactive compute
-node. The dataset contains hundreds of millions of NYC FHV trip records,
-so a distributed Spark setup was required to handle large shuffle
-operations such as deduplication, aggregations, and feature engineering.
+Figure 1: The majority of trips do not include a tip, indicating a clear class imbalance in the dataset. This imbalance increases the difficulty of the prediction task and motivates the use of evaluation metrics such as Precision-Recall AUC, which better reflect performance on the minority class.
 
-## Cluster Resources Requested
+![Figure 2](images/figure2.png "Figure 2")
 
-For large-scale preprocessing (deduplication + aggregations), the
-following resources were requested:
+Figure 2: Tip values are highly skewed, with most tips concentrated at lower values and a long tail of larger tips. This skewness suggests that predicting exact tip amounts is challenging, motivating the use of a binary classification approach to model tipping behavior.
 
--   Total Cores: 8
--   Total Memory: 128 GB
+![Figure 3](images/figure3.png "Figure 3")
 
-These resources were selected to ensure sufficient memory for wide
-shuffle stages during deduplication and tipping aggregations.
+Figure 3: Tipping behavior varies across the day, with higher tip rates observed during midday and early afternoon hours. This pattern indicates that temporal features play an important role in predicting tipping behavior.
 
+![Figure 4](images/figure4.png "Figure 4")
 
-## Executor Configuration
+Figure 4: Tip rates tend to increase for short to medium-distance trips and become more variable for longer trips. This suggests that trip distance influences tipping behavior, though the relationship becomes less stable at extreme distances due to fewer observations.
 
-Spark was configured using the following formula:
+![Figure 5](images/figure5.png "Figure 5")
 
-Executor Instances = Total Cores - 1\
-Executor Memory = (Total Memory - Driver Memory) / Executor Instances
+Airport-related trips exhibit significantly higher tipping rates compared to non-airport trips. This highlights the importance of location-based features and suggests differences in passenger behavior depending on trip context.
 
-Applied configuration:
+![Figure 6](images/figure6.png "Figure 6")
 
--   Total Cores = 8
--   Total Memory = 128 GB
--   Driver Memory = 8 GB
+Figure 6: The first few components capture a large proportion of the total variance, with diminishing returns as more components are added. Approximately 90–95% of the variance is retained within the first set of components, indicating that dimensionality reduction effectively compresses the feature space while preserving most of the underlying structure. This justifies the use of SVD-reduced features for downstream modeling.
 
-Executor Instances = 8 - 1 = 7
+![Figure 7](images/figure7.png "Figure 7")
 
-Executor Memory = (128 - 8) / 7\
-Executor Memory ≈ 17.14 GB per executor
+Figure 7: Projection of the data onto the first two SVD components reveals partial separation between tipping and non-tipping trips. While the classes are not perfectly separable, distinct clustering patterns emerge, suggesting that the reduced feature space retains meaningful structure relevant to the prediction task. This supports the use of both linear and nonlinear models on the compressed features.
 
-This configuration ensures: - One core reserved for the driver -
-Parallel execution across executor slots - Balanced memory distribution
-for shuffle-heavy operations
+## Methods
 
-## Spark UI
+### Data Exploration
 
-![Spark UI](images/spark-ui-screenshot.png "Spark UI")
+We begin by exploring the dataset to understand key characteristics of tipping behavior and feature distributions. The analysis focuses on:
+	•	distribution of tipping behavior (tipped vs not tipped)
+	•	distribution of tip amounts
+	•	relationships between tipping and trip attributes (time, distance, location)
 
-## SparkSession Configuration
+We observe that tipping behavior is imbalanced, with a majority of trips not including a tip. Additionally, tip amounts exhibit strong skewness, suggesting challenges in directly modeling tip values.
+
+### Preprocessing
+
+All preprocessing steps are performed using PySpark to ensure scalability.
+
+Key steps include:
+	•	cleaning and validating trip-level features
+	•	constructing a binary label:
+        •	label = 1 if a tip is present
+        •	label = 0 otherwise
+	•	assembling features into a vector column for modeling
+	•	handling class imbalance using a class_weight column
+	•	splitting data into training and testing sets
+
+### Model 1
 
 ``` python
-spark = (
-    SparkSession.builder
-    .config("spark.local.dir", spark_tmp)
-    .config("spark.driver.memory", "2g")
-    .config("spark.executor.memory", "18g")
-    .config('spark.executor.instances', 7)
-    .config("spark.sql.shuffle.partitions", "4000")
-    .getOrCreate()
-)
+Add our python code here
 ```
 
-### Justification
+As the first distributed model, we trained Random Forest classifiers on the original feature space to predict whether a trip would result in a tip. Random Forest was chosen as a strong baseline because it can capture nonlinear feature interactions while remaining scalable in Spark. 
 
--   spark.driver.memory = 2g
-    Prevents driver-side memory pressure while leaving sufficient memory
-    for executors.
+To address class imbalance, inverse-frequency class weights were applied during training. Two Random Forest configurations were evaluated to study how tree depth and ensemble size affected performance.
 
--   spark.sql.shuffle.partitions = 4000
-    Increased from default to reduce shuffle spill during deduplication
-    of hundreds of millions of rows.
+### Model 2
 
--   spark.local.dir = TMPDIR
-    Ensures shuffle spill occurs on high-speed scratch disk instead of
-    quota-limited home directory.
+``` python
+Add our python code here
+```
 
-## Scratch Disk Usage
+After establishing a baseline with Random Forest on the original feature space, we introduced Singular Value Decomposition (SVD) as a dimensionality reduction step. The goal was to compress the feature space, reduce redundancy, and test whether a lower-dimensional representation could retain enough information for accurate tipping prediction. The reduced features were then used in downstream classifiers, primarily Logistic Regression, with additional experiments using XGBoost on sampled data when computationally feasible.
 
-Shuffle spill and temporary data were directed to:
+## Results
 
-/scratch/`<username>`{=html}/job\_`<job_id>`{=html}
+## Discussion
 
-This prevents disk quota errors and allows large-scale sort and shuffle
-operations.
+## Conclusion
 
+## Statement of Collaboration
 
-## Spark UI Verification
-
-During large transformations such as:
-
--   dropDuplicates()
--   groupBy aggregations
--   Parquet write operations
-
-Multiple executors were active concurrently.
-
-
-## Why This Setup Was Necessary
-
-The dataset contains several hundred million records.
-
-Operations such as: - Deduplication on composite keys - Group-by tipping
-aggregations - Temporal feature engineering
-
-require wide transformations and shuffle stages.
-
-The distributed executor configuration allowed: - Stable shuffle
-performance - Reduced disk spill failures - Successful persistence of a
-cleaned Parquet dataset
-
-- [EDA notebook](https://github.com/javageek2018/SparkGroupProject/blob/Milestone2/eda_232r.ipynb)
-- [Pre-processing notebook](https://github.com/javageek2018/SparkGroupProject/blob/Milestone3/preprocess_232r.ipynb)
-
-
+**Luigi:** Created Exploratory Data Analysis visualizations, helped create data preprocessing pipeline. Helped conduct model tuning for the first and second model. Responsible for writing Introduction, Figures, and helped writing Methods of the final report.
