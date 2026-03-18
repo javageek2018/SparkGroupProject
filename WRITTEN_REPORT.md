@@ -111,7 +111,27 @@ lr_model = lr.fit(train_reduced_df)
 
 ### Data Exploration Results
 
-[Include figure(s): e.g., class distribution, distribution of key numeric features. Add a short caption and reference in text.]
+The deduplicated sample has **~745M** rows with **~84%** no-tip and **~16%** tip (**class imbalance**). Tip **amounts** are highly skewed among tippers, supporting a **binary** label. **Tip rate** varies by **hour** and **trip distance**, and is higher for **airport-related** trips than others.
+
+**Figure 1.** *Class imbalance.* Most trips have no tip; motivates class weighting and PR-AUC.
+
+![Figure 1 — class balance](images/figure1.png)
+
+**Figure 2.** *Tip amounts.* Strong right skew; binary tip/no-tip is a practical target.
+
+![Figure 2 — tip amount distribution](images/figure2.png)
+
+**Figure 3.** *Time of day.* Tip rates vary by pickup hour (e.g. midday / early afternoon).
+
+![Figure 3 — tip rate by hour](images/figure3.png)
+
+**Figure 4.** *Trip distance.* Higher tip rates on short-to-medium trips; more variability at long distances.
+
+![Figure 4 — tip rate vs distance](images/figure4.png)
+
+**Figure 5.** *Airport context.* Airport-related trips show higher tip rates.
+
+![Figure 5 — airport vs non-airport](images/figure5.png)
 
 ### Preprocessing Results
 
@@ -130,7 +150,15 @@ Include your confusion matrix (figure or table) and any accuracy/F1 if computed.
 
 ### Model 2 (SVD + supervised) Results
 
-**SVD:** k=20; 39 → 20 dimensions. First singular values in notebook (e.g. ~28901, 26745, …); **V** 39×20. **Explained variance:** cumulative over 20 components = 100% of variance in the retained subspace (bar + step plot in notebook). Optional: 2D scatter of first two SVD coordinates (balanced subsample).
+**SVD.** k=20; 39 → 20 dimensions. First singular values in notebook (e.g. ~28901, 26745, …); **V** is 39×20. The notebook’s bar/step plot of explained variance corresponds to the scree below; **Figure 7** shows a 2D projection of the reduced space.
+
+**Figure 6.** *SVD explained variance.* Early components carry most variance (~90–95% in the leading directions shown); supports **k = 20** for downstream models.
+
+![Figure 6 — SVD explained variance](images/figure6.png)
+
+**Figure 7.** *First two SVD components.* Partial separation between tipped and non-tipped trips in the plane of the top two singular directions.
+
+![Figure 7 — first two SVD components](images/figure7.png)
 
 **Logistic Regression (full reduced train/test):**
 
@@ -161,50 +189,6 @@ Threshold sweep on positive-class probability; **F1-maximizing threshold 0.15** 
 | False Negatives | 477,963 |
 
 At 0.15: precision ~0.221, recall ~0.659, accuracy ~0.583, F1 ~0.331 (see notebook threshold table for other thresholds).
-
----
-
-## Figures
-
-Paths are relative to this file (same as **`README.md`**). **Preview note:** images appear only if you use `![](path)` — backtick paths alone do not render.
-
-| Fig. | File | Topic |
-|------|------|--------|
-| 1 | `images/figure1.png` | Class balance (tip vs. no-tip) |
-| 2 | `images/figure2.png` | Distribution of tip amounts |
-| 3 | `images/figure3.png` | Tip rate by hour of day |
-| 4 | `images/figure4.png` | Tip rate vs. trip distance |
-| 5 | `images/figure5.png` | Airport vs. non-airport tip rates |
-| 6 | `images/figure6.png` | SVD explained variance (scree / cumulative) |
-| 7 | `images/figure7.png` | First two SVD components by label |
-
-**Figure 1.** *Class imbalance.* Most trips have no tip; motivates class weighting and PR-AUC for the minority class.
-
-![Figure 1 — class balance](images/figure1.png)
-
-**Figure 2.** *Tip amounts.* Strong right skew and long tail support predicting **whether** a tip occurs instead of regressing on amount.
-
-![Figure 2 — tip amount distribution](images/figure2.png)
-
-**Figure 3.** *Time of day.* Tip rates vary by hour (e.g. midday / early afternoon), supporting hour-based features.
-
-![Figure 3 — tip rate by hour](images/figure3.png)
-
-**Figure 4.** *Trip distance.* Higher tip rates on short-to-medium trips; more variability at long distance (sparse data).
-
-![Figure 4 — tip rate vs distance](images/figure4.png)
-
-**Figure 5.** *Airport trips.* Airport-related trips show higher tip rates than other trips; location/context matters.
-
-![Figure 5 — airport vs non-airport](images/figure5.png)
-
-**Figure 6.** *SVD variance.* Early components carry most variance (~90–95% in the leading directions shown); justifies reducing to **k = 20** components for modeling.
-
-![Figure 6 — SVD explained variance](images/figure6.png)
-
-**Figure 7.** *2D SVD embedding.* First two singular directions show partial separation between tipped and non-tipped trips; reduced space remains informative for classifiers.
-
-![Figure 7 — first two SVD components](images/figure7.png)
 
 ---
 
