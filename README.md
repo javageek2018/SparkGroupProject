@@ -98,3 +98,5 @@ After establishing a baseline with Random Forest on the original feature space, 
 **Luigi:** Created Exploratory Data Analysis visualizations, helped create data preprocessing pipeline. Helped conduct model tuning for the first and second model. Responsible for writing Introduction, Figures, and helped writing Methods of the final report.
 
 **Alex:** Submitted the Abstract on behalf of the group, coordinated team meetings, performed the fitting analysis and conclusion.
+
+**Cameron:** Collaborated on model tuning for both the first and second model and performed code auditing on preprocessing and dimensionality reduction to improve optimization and verify logic. Contributed to report writing for third and fourth phase submissions as well.
