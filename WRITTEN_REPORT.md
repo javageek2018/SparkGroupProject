@@ -268,14 +268,14 @@ We also learned to **treat intermediates as assets**. Writing **vectorized featu
 
 We worked as a **team of four**; each member made **substantial** contributions to the project.
 
-- **Sripriya Panchapakesan — Coder (XGBoost & SVD), writer, submitter, feedback coordinator:** Implemented and ran the **XGBoost** and **SVD** parts of the modeling pipeline; drafted and revised the **written report**; handled **submission** logistics; **gathered feedback** from teammates and folded it into the report and workflow.
-
 - **Luigi Cheng — EDA, preprocessing, modeling support, writer:** Created **exploratory data analysis** visualizations; helped build the **data preprocessing** pipeline; assisted with **model tuning** for Model 1 and Model 2; wrote the **Introduction** and **Figures** sections and contributed to **Methods** in the final report.
 
-- **[Teammate 3 — name]: [Title / role]:** [Brief description of their main contributions.]
+- **Sripriya Panchapakesan — Coder (XGBoost & SVD), writer, submitter, feedback coordinator:** Implemented and ran the **XGBoost** and **SVD** parts of the modeling pipeline; drafted and revised the **written report**; handled **submission** logistics; **gathered feedback** from teammates and folded it into the report and workflow.
 
-- **[Teammate 4 — name]: [Title / role]:** [Brief description of their main contributions.]
+- **Cameron Hensley: [Title / role]:** [Brief description of their main contributions.]
 
+- **Alex Twoy — Coordinator:** Coordinated team meetings and ensured that the group stayed on track; submitted the Abstract on the group's behalf at the beginning of the quarter; did Question 3 on Checkpoint 2; performed the fitting analysis and conclusion.
+  
 ---
 
 
