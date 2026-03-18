@@ -274,7 +274,7 @@ We worked as a **team of four**; each member made **substantial** contributions 
 
 - **Cameron Hensley: [Title / role]:** [Brief description of their main contributions.]
 
-- **Alex Twoy — Coordinator:** Coordinated team meetings and ensured that the group stayed on track; submitted the Abstract on the group's behalf at the beginning of the quarter; did Question 3 on Checkpoint 2; performed the fitting analysis and conclusion.
+- **Alex Twoy — Coordinator:** Coordinated team meetings and ensured that the group stayed on track and assigned roles for the final part; submitted the Abstract on the group's behalf at the beginning of the quarter; did Question 3 on Milestone 2 and performed the fitting analysis and conclusion on Milestone 4.
   
 ---
 
