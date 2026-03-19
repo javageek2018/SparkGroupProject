@@ -149,7 +149,11 @@ Random Forest (RF1 and RF2) metrics from the preprocessing notebook:
 
 ### Model 2 (SVD + supervised) Results
 
-**SVD.** k=20; 39 → 20 dimensions. First singular values in notebook (e.g. ~28901, 26745, …); **V** is 39×20. The notebook’s bar/step plot of explained variance corresponds to the scree below; **Figure 7** shows a 2D projection of the reduced space.
+The original feature space consisted of **39 dimensions**, which were compressed into **20 principal components** via SVD. Our analysis of the singular values revealed several key insights:
+
+* **Information Retention:** The 20 selected components capture **100.00% of the total variance**, which tells us that the structure of the dataset is fully preserved despite the reduction in dimensionality.
+* **Feature Redundancy:** The ability to retain full variance while nearly halving the feature count implies significant multicollinearity within the raw taxi data. We were able to reduce this redundancy without sacrificing variance capture. We could potentially reduce the dimensionality further based solely on looking at our visualization.
+* **Component Contribution:** The projection is heavily influenced by specific factors more than others; the first component (**PC_1**) exhibited the highest loading at **-0.54**, followed by **PC_17 (0.28)** and **PC_13 (-0.27)**.
 
 **Figure 6.** *SVD explained variance.* Early components carry most variance (~90–95% in the leading directions shown); supports **k = 20** for downstream models.
 
@@ -161,6 +165,11 @@ Random Forest (RF1 and RF2) metrics from the preprocessing notebook:
 
 **Logistic Regression (full reduced train/test):**
 
+A Logistic Regression model was implemented as a baseline to evaluate the discriminative power of the SVD-transformed features.
+
+* **Performance Metrics:** The model achieved a **Test Accuracy of 60.01%** and an **Area Under the ROC Curve (AUROC) of 0.6368**.
+* **Analysis:** While the baseline outperformed a random classifier, its performance was limited. This suggests that the relationship between the features and tipping behavior is likely non-linear, making it difficult for a purely linear estimator to capture tipping behavior.
+
 | Metric          | Test (reduced) |
 |-----------------|----------------|
 | Accuracy        | 0.6001         |
@@ -169,6 +178,13 @@ Random Forest (RF1 and RF2) metrics from the preprocessing notebook:
 **LR coefficient emphasis:** PC_1 (−0.54), PC_17 (0.28), PC_13 (−0.27), PC_19 (−0.27), PC_11 (0.26).
 
 **XGBoost (Spark) on 20% sample of reduced features** (`train_small` / `test_small`):
+
+To capture more complex feature interactions, an XGBoost classifier was trained on a 20% stratified sample of the reduced SVD features.
+
+* **Comparative Performance:**
+    * **Train ROC-AUC:** 0.6590 | **Test ROC-AUC:** 0.6584
+    * **Train PR-AUC:** 0.2552 | **Test PR-AUC:** 0.2541
+* **Generalization and Robustness:** The negligible difference between training and testing metrics (less than 0.1%) indicates **great generalization**. However, this also indicates we should continue focusing on hyperparameter tuning and/or feature engineering to improve performance.
 
 | Setting | Train ROC-AUC | Test ROC-AUC | Train PR-AUC | Test PR-AUC |
 |---------|-----------------|--------------|--------------|-------------|
