@@ -146,7 +146,6 @@ Random Forest (RF1 and RF2) metrics from the preprocessing notebook:
 | RF1   | 20       | 10       | 16      | 0.6443        | 0.6443       | 0.2427       | 0.2425      | ~0.00 |
 | RF2   | 10       | 15       | 12      | 0.6530        | 0.6526       | 0.2481       | 0.2476      | 0.0004|
 
-Include your confusion matrix (figure or table) and any accuracy/F1 if computed.
 
 ### Model 2 (SVD + supervised) Results
 
