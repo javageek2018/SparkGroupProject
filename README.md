@@ -149,12 +149,6 @@ Random Forest (RF1 and RF2) metrics from the preprocessing notebook:
 
 ### Model 2 (SVD + supervised) Results
 
-The original feature space consisted of **39 dimensions**, which were compressed into **20 principal components** via SVD. Our analysis of the singular values revealed several key insights:
-
-* **Information Retention:** The 20 selected components capture **100.00% of the total variance**, which tells us that the structure of the dataset is fully preserved despite the reduction in dimensionality.
-* **Feature Redundancy:** The ability to retain full variance while nearly halving the feature count implies significant multicollinearity within the raw taxi data. We were able to reduce this redundancy without sacrificing variance capture. We could potentially reduce the dimensionality further based solely on looking at our visualization.
-* **Component Contribution:** The projection is heavily influenced by specific factors more than others; the first component (**PC_1**) exhibited the highest loading at **-0.54**, followed by **PC_17 (0.28)** and **PC_13 (-0.27)**.
-
 **Figure 6.** *SVD explained variance.* Early components carry most variance (~90–95% in the leading directions shown); supports **k = 20** for downstream models.
 
 ![Figure 6 — SVD explained variance](images/figure6.png)
@@ -165,11 +159,6 @@ The original feature space consisted of **39 dimensions**, which were compressed
 
 **Logistic Regression (full reduced train/test):**
 
-A Logistic Regression model was implemented as a baseline to evaluate the discriminative power of the SVD-transformed features.
-
-* **Performance Metrics:** The model achieved a **Test Accuracy of 60.01%** and an **Area Under the ROC Curve (AUROC) of 0.6368**.
-* **Analysis:** While the baseline outperformed a random classifier, its performance was limited. This suggests that the relationship between the features and tipping behavior is likely non-linear, making it difficult for a purely linear estimator to capture tipping behavior.
-
 | Metric          | Test (reduced) |
 |-----------------|----------------|
 | Accuracy        | 0.6001         |
@@ -178,13 +167,6 @@ A Logistic Regression model was implemented as a baseline to evaluate the discri
 **LR coefficient emphasis:** PC_1 (−0.54), PC_17 (0.28), PC_13 (−0.27), PC_19 (−0.27), PC_11 (0.26).
 
 **XGBoost (Spark) on 20% sample of reduced features** (`train_small` / `test_small`):
-
-To capture more complex feature interactions, an XGBoost classifier was trained on a 20% stratified sample of the reduced SVD features.
-
-* **Comparative Performance:**
-    * **Train ROC-AUC:** 0.6590 | **Test ROC-AUC:** 0.6584
-    * **Train PR-AUC:** 0.2552 | **Test PR-AUC:** 0.2541
-* **Generalization and Robustness:** The negligible difference between training and testing metrics (less than 0.1%) indicates **great generalization**. However, this also indicates we should continue focusing on hyperparameter tuning and/or feature engineering to improve performance.
 
 | Setting | Train ROC-AUC | Test ROC-AUC | Train PR-AUC | Test PR-AUC |
 |---------|-----------------|--------------|--------------|-------------|
@@ -227,9 +209,25 @@ At 0.15: precision ~0.221, recall ~0.659, accuracy ~0.583, F1 ~0.331 (see notebo
 
 **Model 2 and dimensionality reduction**
 
-**What we tested here.** After SVD, each trip is described by **20 numbers** instead of 39. We trained a **logistic regression** on those 20 numbers (using the full training set and scoring on the full test set). It gets **60%** of test rows’ labels right (**accuracy**) and separates tippers from non-tippers modestly well (**AUROC 0.64**; random guessing would be 0.5).
+The original feature space consisted of **39 dimensions**, which were compressed into **20 principal components** via SVD. Our analysis of the singular values revealed several key insights:
+
+* **Information Retention:** The 20 selected components capture **100.00% of the total variance**, which tells us that the structure of the dataset is fully preserved despite the reduction in dimensionality.
+* **Feature Redundancy:** The ability to retain full variance while nearly halving the feature count implies significant multicollinearity within the raw taxi data. We were able to reduce this redundancy without sacrificing variance capture. We could potentially reduce the dimensionality further based solely on looking at our visualization.
+* **Component Contribution:** The projection is heavily influenced by specific factors more than others; the first component (**PC_1**) exhibited the highest loading at **-0.54**, followed by **PC_17 (0.28)** and **PC_13 (-0.27)**.
+
+A Logistic Regression model was implemented as a baseline to evaluate the discriminative power of the SVD-transformed features.
+
+* **Performance Metrics:** The model achieved a **Test Accuracy of 60.01%** and an **Area Under the ROC Curve (AUROC) of 0.6368**.
+* **Analysis:** While the baseline outperformed a random classifier, its performance was limited. This suggests that the relationship between the features and tipping behavior is likely non-linear, making it difficult for a purely linear estimator to capture tipping behavior.
 
 **How that compares to Model 1.** Model 1’s **RF2** used **all 39** original features (no SVD). Its ranking score on the same kind of test data was a bit higher (**ROC-AUC ~0.65**). So: **the simpler model on fewer, SVD-compressed features scores slightly worse than the random forest on the full feature set**—which is a common tradeoff (less information + a straight-line decision rule vs. more information + flexible tree rules).
+
+To capture more complex feature interactions, an XGBoost classifier was trained on a 20% stratified sample of the reduced SVD features.
+
+* **Comparative Performance:**
+    * **Train ROC-AUC:** 0.6590 | **Test ROC-AUC:** 0.6584
+    * **Train PR-AUC:** 0.2552 | **Test PR-AUC:** 0.2541
+* **Generalization and Robustness:** The negligible difference between training and testing metrics (less than 0.1%) indicates **great generalization**. However, this also indicates we should continue focusing on hyperparameter tuning and/or feature engineering to improve performance.
 
 **Boosted trees on reduced features.** **XGBoost** was trained on a **20% sample** of the reduced data. After tuning, test **ROC-AUC ~0.676** and **PR-AUC ~0.27** sit closer to RF2. That suggests **nonlinear** models on SVD coordinates can recover much of the signal. When comparing LR, XGB, and RF, remember **XGB used a smaller subset** of rows than LR/RF on their respective splits.
 
