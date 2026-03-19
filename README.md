@@ -23,9 +23,9 @@ The full dataset has hundreds of millions of trips (e.g., ~745M rows before samp
 
 Exploration, preprocessing, and final modeling are implemented in the following notebooks 
 
-- [EDA Notebook](https://github.com/javageek2018/SparkGroupProject/blob/eda_232r.ipynb)
-- [First Model Notebook](https://github.com/javageek2018/SparkGroupProject/blob/preprocess_232r.ipynb) — preprocessing, vectorized features, **Model 1** (Random Forest)
-- [Final Model Notebook](https://github.com/javageek2018/SparkGroupProject/blob/final_model_232r.ipynb) — **SVD**, reduced-feature classifiers, XGBoost and threshold analysis
+- [EDA Notebook](https://github.com/javageek2018/SparkGroupProject/blob/main/eda_232r.ipynb)
+- [First Model Notebook](https://github.com/javageek2018/SparkGroupProject/blob/main/preprocess_232r.ipynb) — preprocessing, vectorized features, **Model 1** (Random Forest)
+- [Final Model Notebook](https://github.com/javageek2018/SparkGroupProject/blob/main/final_model_232r.ipynb) — **SVD**, reduced-feature classifiers, XGBoost and threshold analysis
 
 ---
 
