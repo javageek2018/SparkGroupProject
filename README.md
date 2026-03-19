@@ -182,7 +182,7 @@ At 0.15: precision ~0.221, recall ~0.659, accuracy ~0.583, F1 ~0.331 (see notebo
 
 * **Dimensionality reduction.** We used SVD via `RowMatrix.computeSVD` as the required unsupervised step. With **k = 20**, we keep the 20 strongest singular directions from the original **39**-dimensional feature space.
 
-* **Preprocessing.** Choices match the data shape: fee-like fields missing when not charged were filled with **0**; other skewed numerics used **median** imputation. **Log** transforms reduced skew on fare, miles, and trip time; **StandardScaler** put numeric features on comparable scales before assembly and SVD.
+* **Preprocessing.** We performed operations based on the shape of the data. Fee-like fields missing when not charged were filled with **0** while other skewed numerics used **median** imputation. **Log** transforms reduced skew on fare, miles, and trip time. **StandardScaler** put numeric features on comparable scales before assembly and SVD.
 
 * **Class imbalance.** About **84%** of trips are no-tip, so we used **inverse-frequency class weights** so models do not ignore the minority (tip) class.
 
@@ -190,7 +190,7 @@ At 0.15: precision ~0.221, recall ~0.659, accuracy ~0.583, F1 ~0.331 (see notebo
 
 * **Why Random Forest.** It scales well on Spark and is easy to interpret. We applied **class weights** (positive class ≈ **5.38×**) so the forest does not overwhelmingly favor the no-tip majority.
 
-* **Generalization vs. capacity.** Train and test **ROC-AUC** and **PR-AUC** are almost the same (gaps on the order of **0.0002–0.0004**). That points to stable generalization but also **underfitting**: the forests are probably too shallow or too small to fully exploit the signal.
+* **Generalization vs. capacity.** Train and test **ROC-AUC** and **PR-AUC** are almost the same (differences are only around **0.0002–0.0004**). That points to stable generalization but also **underfitting**: the forests are probably too shallow or too small to fully learn the signals.
 
 * **RF1 vs. RF2.** **RF2** (deeper trees, fewer trees than RF1) gained about **0.008** in test ROC-AUC over **RF1**, which suggests **depth** helps capture feature interactions for this task.
 
@@ -219,22 +219,22 @@ At 0.15: precision ~0.221, recall ~0.659, accuracy ~0.583, F1 ~0.331 (see notebo
 
     * **Boosted trees on reduced features.** **XGBoost** was trained on a **20% sample** of the reduced data. After tuning, test **ROC-AUC ~0.676** and **PR-AUC ~0.27** sit closer to RF2. That suggests **nonlinear** models on SVD coordinates can recover much of the signal. When comparing LR, XGB, and RF, remember **XGB used a smaller subset** of rows than LR/RF on their respective splits.
 
-    * **Interpreting SVD directions.** Largest **LR** weights fell on **PC_1** and **PC_17**–**PC_19**. To tie those back to fare, time, zone, etc., you need the columns of **V** (how each original feature loads on each component).
+    * **Interpreting SVD directions.** The largest **LR** weights fell on **PC_1** and **PC_17**–**PC_19**. These are not easily interpretable on their own, so in order to make insights from these components we would need to map them back.
 
 **Fitting analysis**
 
-* **Random forests (Model 1).** Training and test scores are almost the same. That usually means the model **is not memorizing** the training data—but it also suggests the forests may be **too small or shallow** to squeeze out more performance (**underfitting**).
+* **Random forests (Model 1).** Training and test scores are almost the same. That most likely means the model **is not memorizing** the training data but it also suggests the forests may be **too small or shallow** to squeeze out more performance, which implies (**underfitting**).
 
-* **XGBoost on the 20% sample.** Before tuning, train and test ROC-AUC were nearly identical (~**0.659** vs ~**0.658**), so the model was **not badly overfitting** on that slice. Trying different depth/learning-rate settings **nudged PR-AUC up** on the test slice (helpful when the positive class is rare).
+* **XGBoost on the 20% sample.** Before tuning, train and test ROC-AUC were nearly identical (~**0.659** vs ~**0.658**), so the model was **not badly overfitting** on that slice. Trying different depth/learning-rate settings **nudged PR-AUC up** on the test slice.
 
 * **Takeaway.** **Logistic regression on SVD** is easy to read and good as a reference. **Tree boosting on the same 20-D SVD features** adds curved, interaction-like patterns **without** going back to all **39** raw features.
 
 **Shortcomings**
 
 * **One random split only.** We did not use k-fold or repeated splits, so metrics could shift a bit with another split.
-* **Time and place.** Trips are not split by date or neighborhood; patterns might leak across train and test if similar trips cluster in time or space.
-* **Not the full database.** Pipelines use a **30% stratified sample** of the full data, so results are for that slice, not every row in the raw release.
-* **Features we don’t have.** No rider ID, trip history, or driver traits—only trip-level fields—so the ceiling on prediction may be limited.
+* **Time and place.** Trips are not split by date or neighborhood. Patterns might leak across train and test if similar trips cluster in time or space.
+* **Not the full database.** Pipelines use a **30% stratified sample** of the full data, so results are for that slice, not every row in the raw data set.
+* **Features we don’t have.** No rider ID, trip history, or driver traits were included, only trip-level fields. Because of this, the ceiling on prediction may be limited.
 
 ---
 
@@ -242,22 +242,22 @@ At 0.15: precision ~0.221, recall ~0.659, accuracy ~0.583, F1 ~0.331 (see notebo
 
 **Second model vs first**
 
-* **Model 2 (SVD + supervised).** We first reduced **39** features to **20** with **SVD**. On top of that we ran (1) **weighted logistic regression** on the full reduced train/test set—test **AUROC ~0.64**, **accuracy ~60%**—and (2) **XGBoost** on a **20% subsample** of reduced rows, with hyperparameter tuning—about **0.68** ROC-AUC and **0.27** PR-AUC on that subsample’s test portion.
+* **Model 2 (SVD + supervised):** We first reduced **39** features to **20** with **SVD**. On top of that we ran (1) **weighted logistic regression** on the full reduced train/test set—test **AUROC ~0.64**, **accuracy ~60%** and (2) **XGBoost** on a **20% subsample** of reduced rows, with hyperparameter tuning about **0.68** ROC-AUC and **0.27** PR-AUC on that subsample’s test portion.
 
-* **Model 1.** **RF2** on **all 39** features without SVD still lands around **0.65** ROC-AUC on its test set—so the best tree model on full features and the tuned boosted model on SVD features are in a similar ballpark, while plain LR on 20 SVD directions is a bit behind.
+* **Model 1.** **RF2** on **all 39** features without SVD still lands around **0.65** ROC-AUC on its test set so the best tree model on full features and the tuned boosted model on SVD features are in a similar ballpark, while plain LR on 20 SVD directions is a bit behind.
 
-**What to try next**
+**Next Steps**
 
 - Try a **different number of SVD components** (It appears we could further reduce this without losing much if any variance).
 - Run **boosting on all reduced-dimension rows** (not only 20%). Using more of the data available would likely improve results.
 - Adjust **thresholds and class weights** to further improve the model's ability to handle class imbalance without losing precision.
-- Use **time- or zone-based splits** to check that results generalize to new areas or time-periods.
+- Use **time or zone based splits** to check that results generalize to new areas or time-periods.
 
 **Big data: how using SDSC made this analysis possible**
 
-The project starts from on the order of **745 million** trips—far more than a single machine can comfortably clean, featurize, and model end-to-end. **Spark** enabled us to run the full suite of operations that we wanted (dedupe, aggregate, impute, scale, encode, assemble vectors, split, SVD, train classifiers) by making these operations run **across many workers**, this distributed workflow allows us to do on a cluster what we couldn't do on a single machine.
+The project starts from on the order of **745 million** trips, far more than a single machine can comfortably clean, featurize, and model end-to-end on its own. **Spark** enabled us to run the full suite of operations that we wanted (dedupe, aggregate, impute, scale, encode, assemble vectors, split, SVD, train classifiers) by making these operations run **across many workers.** This distributed workflow allowed us to do on a cluster what we couldn't do on a single machine.
 
-Once we were on a cluster, the **shape of the work** changed. Heavy steps—wide shuffles like our deduplication and model training were **parallelized**, so instead of waiting overnight and hoping for the best we could track progress over the course of a couple hours or less in most cases. When, even despite the cluster, we ran into memory errors, we were forced to consider optimization and re-design our pipeline and operations to be more mindful of **how** we tackled problems.
+Once we were on a cluster, the **shape of the work** changed. Heavy step wide shuffles like our deduplication and model training were **parallelized**, so instead of waiting overnight and hoping for the best we could track progress over the course of a couple hours or less in most cases. When, even despite the cluster, we ran into memory errors, we were forced to consider optimization and re-design our pipeline and operations to be more mindful of **how** we tackled problems.
 
 We also learned to **treat intermediates as assets**. Writing **vectorized features**, **train/test splits**, and **SVD factors** to **Parquet** meant we paid the cost of the hardest transforms once and could iterate on models without rebuilding everything from raw data. This became a very helpful tool in allowing us to work better as a team, reducing redundant efforts.
 
@@ -267,7 +267,7 @@ From here, we would want to run **boosting on all reduced-dimension rows** (not 
 
 ## Statement of Collaboration
 
-We worked as a **team of four**; each member made **substantial** contributions to the project.
+We worked as a **team of four** where each member made **substantial** contributions to the project.
 
 - **Luigi Cheng — EDA, Preprocessing, Modeling, Writer:** Created **exploratory data analysis** visualizations. Helped build the **data preprocessing** pipeline. Assisted with **model tuning** for Model 1 and Model 2. Wrote the **Introduction** and **Figures** sections and contributed to **Methods** in the final report.
 
