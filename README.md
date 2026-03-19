@@ -191,62 +191,63 @@ At 0.15: precision ~0.221, recall ~0.659, accuracy ~0.583, F1 ~0.331 (see notebo
 
 ## Discussion
 
-**Interpretation and “why”**
+**Interpretation**
 
-**Dimensionality reduction.** We used SVD via `RowMatrix.computeSVD` as the required unsupervised step. With **k = 20**, we keep the 20 strongest singular directions from the original **39**-dimensional feature space.
+* **Dimensionality reduction.** We used SVD via `RowMatrix.computeSVD` as the required unsupervised step. With **k = 20**, we keep the 20 strongest singular directions from the original **39**-dimensional feature space.
 
-**Preprocessing.** Choices match the data shape: fee-like fields missing when not charged were filled with **0**; other skewed numerics used **median** imputation. **Log** transforms reduced skew on fare, miles, and trip time; **StandardScaler** put numeric features on comparable scales before assembly and SVD.
+* **Preprocessing.** Choices match the data shape: fee-like fields missing when not charged were filled with **0**; other skewed numerics used **median** imputation. **Log** transforms reduced skew on fare, miles, and trip time; **StandardScaler** put numeric features on comparable scales before assembly and SVD.
 
-**Class imbalance.** About **84%** of trips are no-tip, so we used **inverse-frequency class weights** so models do not ignore the minority (tip) class.
+* **Class imbalance.** About **84%** of trips are no-tip, so we used **inverse-frequency class weights** so models do not ignore the minority (tip) class.
 
 **Model 1**
 
-**Why Random Forest.** It scales well on Spark and is easy to interpret. We applied **class weights** (positive class ≈ **5.38×**) so the forest does not overwhelmingly favor the no-tip majority.
+* **Why Random Forest.** It scales well on Spark and is easy to interpret. We applied **class weights** (positive class ≈ **5.38×**) so the forest does not overwhelmingly favor the no-tip majority.
 
-**Generalization vs. capacity.** Train and test **ROC-AUC** and **PR-AUC** are almost the same (gaps on the order of **0.0002–0.0004**). That points to stable generalization but also **underfitting**: the forests are probably too shallow or too small to fully exploit the signal.
+* **Generalization vs. capacity.** Train and test **ROC-AUC** and **PR-AUC** are almost the same (gaps on the order of **0.0002–0.0004**). That points to stable generalization but also **underfitting**: the forests are probably too shallow or too small to fully exploit the signal.
 
-**RF1 vs. RF2.** **RF2** (deeper trees, fewer trees than RF1) gained about **0.008** in test ROC-AUC over **RF1**, which suggests **depth** helps capture feature interactions for this task.
+* **RF1 vs. RF2.** **RF2** (deeper trees, fewer trees than RF1) gained about **0.008** in test ROC-AUC over **RF1**, which suggests **depth** helps capture feature interactions for this task.
 
 **Model 2 and dimensionality reduction**
 
-The original feature space consisted of **39 dimensions**, which were compressed into **20 principal components** via SVD. Our analysis of the singular values revealed several key insights:
+* The original feature space consisted of **39 dimensions**, which were compressed into **20 principal components** via SVD. Our analysis of the singular values revealed several key insights:
 
-* **Information Retention:** The 20 selected components capture **100.00% of the total variance**, which tells us that the structure of the dataset is fully preserved despite the reduction in dimensionality.
-* **Feature Redundancy:** The ability to retain full variance while nearly halving the feature count implies significant multicollinearity within the raw taxi data. We were able to reduce this redundancy without sacrificing variance capture. We could potentially reduce the dimensionality further based solely on looking at our visualization.
-* **Component Contribution:** The projection is heavily influenced by specific factors more than others; the first component (**PC_1**) exhibited the highest loading at **-0.54**, followed by **PC_17 (0.28)** and **PC_13 (-0.27)**.
+    * **Information Retention:** The 20 selected components capture **100.00% of the total variance**, which tells us that the structure of the dataset is fully preserved despite the reduction in dimensionality.
+    * **Feature Redundancy:** The ability to retain full variance while nearly halving the feature count implies significant multicollinearity within the raw taxi data. We were able to reduce this redundancy without sacrificing variance capture. We could potentially reduce the dimensionality further based solely on looking at our visualization.
+    * **Component Contribution:** The projection is heavily influenced by specific factors more than others; the first component (**PC_1**) exhibited the highest loading at **-0.54**, followed by **PC_17 (0.28)** and **PC_13 (-0.27)**.
 
-A Logistic Regression model was implemented as a baseline to evaluate the discriminative power of the SVD-transformed features.
+* A Logistic Regression model was implemented as a baseline to evaluate the discriminative power of the SVD-transformed features.
 
-* **Performance Metrics:** The model achieved a **Test Accuracy of 60.01%** and an **Area Under the ROC Curve (AUROC) of 0.6368**.
-* **Analysis:** While the baseline outperformed a random classifier, its performance was limited. This suggests that the relationship between the features and tipping behavior is likely non-linear, making it difficult for a purely linear estimator to capture tipping behavior.
+    * **Performance Metrics:** The model achieved a **Test Accuracy of 60.01%** and an **Area Under the ROC Curve (AUROC) of 0.6368**.
+    * **Analysis:** While the baseline outperformed a random classifier, its performance was limited. This suggests that the relationship between the features and tipping behavior is likely non-linear, making it difficult for a purely linear estimator to capture tipping behavior.
 
-**How that compares to Model 1.** Model 1’s **RF2** used **all 39** original features (no SVD). Its ranking score on the same kind of test data was a bit higher (**ROC-AUC ~0.65**). So: **the simpler model on fewer, SVD-compressed features scores slightly worse than the random forest on the full feature set**—which is a common tradeoff (less information + a straight-line decision rule vs. more information + flexible tree rules).
+* **How that compares to Model 1:** 
+    * Model 1’s **RF2** used **all 39** original features (no SVD). Its ranking score on the same kind of test data was a bit higher (**ROC-AUC ~0.65**). So: **the simpler model on fewer, SVD-compressed features scores slightly worse than the random forest on the full feature set**—which is a common tradeoff (less information + a straight-line decision rule vs. more information + flexible tree rules).
 
-To capture more complex feature interactions, an XGBoost classifier was trained on a 20% stratified sample of the reduced SVD features.
+* To capture more complex feature interactions, an XGBoost classifier was trained on a 20% stratified sample of the reduced SVD features.
 
-* **Comparative Performance:**
-    * **Train ROC-AUC:** 0.6590 | **Test ROC-AUC:** 0.6584
-    * **Train PR-AUC:** 0.2552 | **Test PR-AUC:** 0.2541
-* **Generalization and Robustness:** The negligible difference between training and testing metrics (less than 0.1%) indicates **great generalization**. However, this also indicates we should continue focusing on hyperparameter tuning and/or feature engineering to improve performance.
+    * **Comparative Performance:**
+        * **Train ROC-AUC:** 0.6590 | **Test ROC-AUC:** 0.6584
+        * **Train PR-AUC:** 0.2552 | **Test PR-AUC:** 0.2541
+    * **Generalization and Robustness:** The negligible difference between training and testing metrics (less than 0.1%) indicates **great generalization**. However, this also indicates we should continue focusing on hyperparameter tuning and/or feature engineering to improve performance.
 
-**Boosted trees on reduced features.** **XGBoost** was trained on a **20% sample** of the reduced data. After tuning, test **ROC-AUC ~0.676** and **PR-AUC ~0.27** sit closer to RF2. That suggests **nonlinear** models on SVD coordinates can recover much of the signal. When comparing LR, XGB, and RF, remember **XGB used a smaller subset** of rows than LR/RF on their respective splits.
+    * **Boosted trees on reduced features.** **XGBoost** was trained on a **20% sample** of the reduced data. After tuning, test **ROC-AUC ~0.676** and **PR-AUC ~0.27** sit closer to RF2. That suggests **nonlinear** models on SVD coordinates can recover much of the signal. When comparing LR, XGB, and RF, remember **XGB used a smaller subset** of rows than LR/RF on their respective splits.
 
-**Interpreting SVD directions.** Largest **LR** weights fell on **PC_1** and **PC_17**–**PC_19**. To tie those back to fare, time, zone, etc., you need the columns of **V** (how each original feature loads on each component).
+    * **Interpreting SVD directions.** Largest **LR** weights fell on **PC_1** and **PC_17**–**PC_19**. To tie those back to fare, time, zone, etc., you need the columns of **V** (how each original feature loads on each component).
 
 **Fitting analysis**
 
-**Random forests (Model 1).** Training and test scores are almost the same. That usually means the model **is not memorizing** the training data—but it also suggests the forests may be **too small or shallow** to squeeze out more performance (**underfitting**).
+* **Random forests (Model 1).** Training and test scores are almost the same. That usually means the model **is not memorizing** the training data—but it also suggests the forests may be **too small or shallow** to squeeze out more performance (**underfitting**).
 
-**XGBoost on the 20% sample.** Before tuning, train and test ROC-AUC were nearly identical (~**0.659** vs ~**0.658**), so the model was **not badly overfitting** on that slice. Trying different depth/learning-rate settings **nudged PR-AUC up** on the test slice (helpful when the positive class is rare).
+* **XGBoost on the 20% sample.** Before tuning, train and test ROC-AUC were nearly identical (~**0.659** vs ~**0.658**), so the model was **not badly overfitting** on that slice. Trying different depth/learning-rate settings **nudged PR-AUC up** on the test slice (helpful when the positive class is rare).
 
-**Takeaway.** **Logistic regression on SVD** is easy to read and good as a reference. **Tree boosting on the same 20-D SVD features** adds curved, interaction-like patterns **without** going back to all **39** raw features.
+* **Takeaway.** **Logistic regression on SVD** is easy to read and good as a reference. **Tree boosting on the same 20-D SVD features** adds curved, interaction-like patterns **without** going back to all **39** raw features.
 
-**Shortcomings**
+* **Shortcomings**
 
-- **One random split only.** We did not use k-fold or repeated splits, so metrics could shift a bit with another split.
-- **Time and place.** Trips are not split by date or neighborhood; patterns might leak across train and test if similar trips cluster in time or space.
-- **Not the full database.** Pipelines use a **30% stratified sample** of the full data, so results are for that slice, not every row in the raw release.
-- **Features we don’t have.** No rider ID, trip history, or driver traits—only trip-level fields—so the ceiling on prediction may be limited.
+    - **One random split only.** We did not use k-fold or repeated splits, so metrics could shift a bit with another split.
+    - **Time and place.** Trips are not split by date or neighborhood; patterns might leak across train and test if similar trips cluster in time or space.
+    - **Not the full database.** Pipelines use a **30% stratified sample** of the full data, so results are for that slice, not every row in the raw release.
+    - **Features we don’t have.** No rider ID, trip history, or driver traits—only trip-level fields—so the ceiling on prediction may be limited.
 
 ---
 
