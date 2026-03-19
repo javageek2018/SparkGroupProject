@@ -24,10 +24,9 @@ The full dataset has hundreds of millions of trips (e.g., ~745M rows before samp
 Exploration, preprocessing, and final modeling are implemented in the following notebooks 
 
 - [EDA Notebook](https://github.com/javageek2018/SparkGroupProject/blob/main/eda_232r.ipynb)
-- [First Model Notebook](https://github.com/javageek2018/SparkGroupProject/blob/main/preprocess_232r.ipynb) — preprocessing, vectorized features, **Model 1** (Random Forest)
-- [Final Model Notebook](https://github.com/javageek2018/SparkGroupProject/blob/main/final_model_232r.ipynb) — **SVD**, reduced-feature classifiers, XGBoost and threshold analysis
+- [First Model Notebook](https://github.com/javageek2018/SparkGroupProject/blob/main/preprocess_232r.ipynb)
+- [Final Model Notebook](https://github.com/javageek2018/SparkGroupProject/blob/main/final_model_232r.ipynb)
 
----
 
 ## Methodology
 
@@ -51,7 +50,7 @@ df3.groupBy("tip_binary").count().show()
 
 **Feature engineering:** Time-derived and derived flags: `pickup_hour`, `pickup_dow`, `pickup_month`, `is_weekend`, `is_night`, `has_airport_fee`, `has_congestion_fee`, `total_surcharges`, `fare_per_mile`.
 
-**Encoding:** Six categorical variables—`hvfhs_license_num` (service provider), `shared_request_flag`, `shared_match_flag`, `access_a_ride_flag`, `wav_request_flag`, `wav_match_flag`—were trimmed, filled with `"Unknown"` where null/empty, then passed through `StringIndexer` and `OneHotEncoder` (handleInvalid="keep") to produce `*_ohe` columns.
+**Encoding:** We took six categorical variables,`hvfhs_license_num` (service provider), `shared_request_flag`, `shared_match_flag`, `access_a_ride_flag`, `wav_request_flag`, `wav_match_flag`, cleaned them by trimming. We then filled with `"Unknown"` where null/empty, then passed through `StringIndexer` and `OneHotEncoder` (handleInvalid="keep") to produce `*_ohe` columns.
 
 **Assembly:** A final `VectorAssembler` combined `num_scaled` and all `*_ohe` into a single **39-dimensional** feature vector (15 scaled numeric + 24 OHE dimensions). The label is `tip_binary` cast to int as `label`. The result was written to `processed_data/vectorized_features`. For modeling, we took a 30% stratified sample by `label`, added a class-weight column (`balancing_ratio` ≈ 5.38 for the positive class), and split 80/20 into `train_df` and `test_df`, persisting both to Parquet.
 
@@ -67,12 +66,15 @@ df_model = df_model.sampleBy("label", fractions={0: 0.3, 1: 0.3}, seed=42)
 train_df, test_df = df_model.randomSplit([0.8, 0.2], seed=42)
 train_df.write.mode("overwrite").parquet("processed_data/train_split")
 test_df.write.mode("overwrite").parquet("processed_data/test_split")
-# Modeling stage may read splits from Parquet paths as deployed on your cluster
 ```
 
 ### Model 1 (First Distributed Model)
 
-Model 1 is a **Random Forest** classifier trained on the full 39-dimensional `features` vector with a `class_weight` column to handle class imbalance (inverse frequency weight ≈ 5.38 for the positive class). It was fit on `train_df` (30% stratified sample) and evaluated on `test_df`. Two configurations were compared: **RF1** (numTrees=20, maxDepth=10, maxBins=16) and **RF2** (numTrees=10, maxDepth=15, maxBins=12). RF2 achieved slightly higher ROC-AUC and PR-AUC with a minimal train–test gap.
+We built Model 1 using a Random Forest classifier. It uses the full 39-dimensional features vector. We added a `class_weight` column to handle class imbalance. The positive class has an inverse frequency weight of about 5.38.
+
+We trained the model on `train_df`, which is a 30 percent stratified sample. We then evaluated it on `test_df`. We tried two setups. RF1 (numTrees=20, maxDepth=10, maxBins=16) and RF2 (numTrees=10, maxDepth=15, maxBins=12)
+
+RF2 achieved slightly higher ROC-AUC and PR-AUC with a minimal train–test gap.
 
 ```python
 df_model = df_model.withColumn(
@@ -85,26 +87,15 @@ model1 = rf.fit(train_df)
 
 ### Model 2 (SVD + supervised models)
 
-**Data load:** `train_df` and `test_df` are read from saved Parquet splits (`train_split` / `test_split`).
+We take the training features and build a `RowMatrix`, then run `computeSVD(k=20, computeU=True)` where `k = min(20, 39)`. This gives us a 39×20 matrix V and the singular values s.
 
-**(1) SVD:** `RowMatrix` on training `features` (mllib vectors); `computeSVD(k=20, computeU=True)` with k = min(20, 39). **V** is 39×20; **s** singular values saved to `processed_data/svd_V` and `processed_data/svd_s` (explicit Parquet schema with Python floats). Explained-variance plots from **s** appear in Results/Figures.
+We later use `s` to plot explained variance. Next, we load V, reshape it using column-major order (order='F'), and broadcast it so we can project each row with `np.dot(features.toArray(), V)`. This reduces the feature space down to 20 dimensions, giving us `train_reduced_df` and `test_reduced_df` with both `label` and `class_weight`. 
 
-**(2) Projection:** **V** loaded from Parquet, reshaped column-major (`order='F'`), broadcast; UDF projects each row: `np.dot(features.toArray(), V)` → 20-D `features`. Applied to train and test → `train_reduced_df`, `test_reduced_df` with `label` and `class_weight`.
+On top of these reduced features, we train a logistic regression model with `LogisticRegression(featuresCol="features", labelCol="label", weightCol="class_weight", maxIter=10)`, fit it on `train_reduced_df,` evaluate it on `test_reduced_df`. 
 
-**(3) Logistic Regression (Model 2a):** `LogisticRegression(featuresCol="features", labelCol="label", weightCol="class_weight", maxIter=10)` fit on `train_reduced_df`, evaluated on `test_reduced_df`. Model saved to `processed_data/lr_model_svd_20`. Coefficient magnitudes rank influential SVD directions (e.g. PC_1, PC_17, PC_13, PC_19, PC_11).
+Looking at the coefficients, a few components like `PC_1`, `PC_17`, `PC_13`, `PC_19`, and `PC_11` stand out as the most influential. 
 
-**(4) XGBoost on reduced sample (Model 2b):** 20% random samples of reduced train/test written to `processed_data/train_small_sample` and `test_small_sample` (~35.7M / ~8.9M rows). **SparkXGBClassifier** (`xgboost.spark`) with `num_workers=8`, binary logistic objective; initial run ~100 rounds (max_depth 6, learning_rate 0.1). **Hyperparameter grid:** four configs varying `max_depth`, `n_estimators`, `learning_rate`; best by PR-AUC: max_depth=10, n_estimators=100, learning_rate=0.05. **Threshold sweep** on best model’s positive-class probability on `test_small`; threshold **0.15** chosen by max F1 → reported TP/TN/FP/FN.
-
-```python
-features_rdd = train_df.select("features").rdd.map(lambda row: ml_to_mllib(row.features))
-svd = RowMatrix(features_rdd).computeSVD(20, computeU=True)
-# ... save V, s; project with broadcast V + UDF
-lr = LogisticRegression(weightCol="class_weight", maxIter=10)
-lr_model = lr.fit(train_reduced_df)
-# XGBoost: SparkXGBClassifier(...).fit(train_small); param grid + threshold on prob_array[1]
-```
-
----
+We also try a second model using `XGBoost`. We train a `SparkXGBClassifier` from `xgboost.spark` with `num_workers=8` and a binary logistic objective, starting with around 100 rounds, `max_depth=6`, and `learning_rate=0.1`. 
 
 ## Results
 
@@ -113,11 +104,11 @@ lr_model = lr.fit(train_reduced_df)
 
 The deduplicated sample has **~745M** rows with **~84%** no-tip and **~16%** tip (**class imbalance**). Tip **amounts** are highly skewed among tippers, supporting a **binary** label. **Tip rate** varies by **hour** and **trip distance**, and is higher for **airport-related** trips than others.
 
-**Figure 1.** *Class imbalance.* Most trips have no tip; motivates class weighting and PR-AUC.
+**Figure 1.** *Class imbalance.* Most trips have no tip.
 
 ![Figure 1 — class balance](images/figure1.png)
 
-**Figure 2.** *Tip amounts.* Strong right skew; binary tip/no-tip is a practical target.
+**Figure 2.** *Tip amounts.* Strong right skew. Binary tip/no-tip is a practical target.
 
 ![Figure 2 — tip amount distribution](images/figure2.png)
 
@@ -125,17 +116,13 @@ The deduplicated sample has **~745M** rows with **~84%** no-tip and **~16%** tip
 
 ![Figure 3 — tip rate by hour](images/figure3.png)
 
-**Figure 4.** *Trip distance.* Higher tip rates on short-to-medium trips; more variability at long distances.
+**Figure 4.** *Trip distance.* Higher tip rates on short-to-medium trips.
 
 ![Figure 4 — tip rate vs distance](images/figure4.png)
 
 **Figure 5.** *Airport context.* Airport-related trips show higher tip rates.
 
 ![Figure 5 — airport vs non-airport](images/figure5.png)
-
-### Preprocessing Results
-
-After preprocessing: **39-dimensional** feature vector per row (15 scaled numeric + 24 OHE dimensions). Full dataset 745M rows; after 30% stratified sample ~223M rows; after 80/20 split, train and test sizes and class counts (e.g. train: ~178M no-tip, ~33M tip; test: ~44M no-tip, ~8M tip—adjust with your actual counts). Final feature matrix written to `processed_data/vectorized_features`.
 
 ### Model 1 Results
 
@@ -147,7 +134,7 @@ Random Forest (RF1 and RF2) metrics from the preprocessing notebook:
 | RF2   | 10       | 15       | 12      | 0.6530        | 0.6526       | 0.2481       | 0.2476      | 0.0004|
 
 
-### Model 2 (SVD + supervised) Results
+### Model 2 Results
 
 **Figure 6.** *SVD explained variance.* Early components carry most variance (~90–95% in the leading directions shown); supports **k = 20** for downstream models.
 
