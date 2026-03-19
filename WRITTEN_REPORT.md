@@ -272,7 +272,7 @@ We worked as a **team of four**; each member made **substantial** contributions 
 
 - **Sripriya Panchapakesan — Coder (XGBoost & SVD), writer, submitter, feedback coordinator:** Implemented and ran the **XGBoost** and **SVD** parts of the modeling pipeline; drafted and revised the **written report**; handled **submission** logistics; **gathered feedback** from teammates and folded it into the report and workflow.
 
-- **Cameron Hensley: [Title / role]:** [Brief description of their main contributions.]
+- **Cameron Hensley: Collaborater,Coder:** Collaborated on model tuning for both the first and second model and performed code auditing on preprocessing and dimensionality reduction to improve optimization and verify logic. Contributed to report writing for third and fourth phase submissions as well.
 
 - **Alex Twoy — Coordinator:** Coordinated team meetings and ensured that the group stayed on track and assigned roles for the final part; submitted the Abstract on the group's behalf at the beginning of the quarter; did Question 3 on Milestone 2 and performed the fitting analysis and conclusion on Milestone 4.
   
