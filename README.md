@@ -19,7 +19,7 @@ The full dataset has hundreds of millions of trips (e.g., ~745M rows before samp
 
 ---
 
-## Notebooks and code
+### Notebooks and code
 
 Exploration, preprocessing, and final modeling are implemented in the following notebooks 
 
