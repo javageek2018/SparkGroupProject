@@ -242,7 +242,7 @@ At 0.15: precision ~0.221, recall ~0.659, accuracy ~0.583, F1 ~0.331 (see notebo
 
 **Second model vs first**
 
-* **Model 2 (SVD + supervised):** We first reduced **39** features to **20** with **SVD**. On top of that we ran (1) **weighted logistic regression** on the full reduced train/test set—test **AUROC ~0.64**, **accuracy ~60%** and (2) **XGBoost** on a **20% subsample** of reduced rows, with hyperparameter tuning about **0.68** ROC-AUC and **0.27** PR-AUC on that subsample’s test portion.
+* **Model 2 (SVD + supervised):** We first reduced **39** features to **20** with **SVD**. On top of that we ran (1) **weighted logistic regression** on the full reduced train/test set (test **AUROC ~0.64**, **accuracy ~60%**) and (2) **XGBoost** on a **20% subsample** of reduced rows, with hyperparameter tuning about **0.68** ROC-AUC and **0.27** PR-AUC on that subsample’s test portion.
 
 * **Model 1.** **RF2** on **all 39** features without SVD still lands around **0.65** ROC-AUC on its test set so the best tree model on full features and the tuned boosted model on SVD features are in a similar ballpark, while plain LR on 20 SVD directions is a bit behind.
 
