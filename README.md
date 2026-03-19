@@ -229,12 +229,12 @@ At 0.15: precision ~0.221, recall ~0.659, accuracy ~0.583, F1 ~0.331 (see notebo
 
 * **Takeaway.** **Logistic regression on SVD** is easy to read and good as a reference. **Tree boosting on the same 20-D SVD features** adds curved, interaction-like patterns **without** going back to all **39** raw features.
 
-* **Shortcomings**
+**Shortcomings**
 
-    - **One random split only.** We did not use k-fold or repeated splits, so metrics could shift a bit with another split.
-    - **Time and place.** Trips are not split by date or neighborhood; patterns might leak across train and test if similar trips cluster in time or space.
-    - **Not the full database.** Pipelines use a **30% stratified sample** of the full data, so results are for that slice, not every row in the raw release.
-    - **Features we don’t have.** No rider ID, trip history, or driver traits—only trip-level fields—so the ceiling on prediction may be limited.
+* **One random split only.** We did not use k-fold or repeated splits, so metrics could shift a bit with another split.
+* **Time and place.** Trips are not split by date or neighborhood; patterns might leak across train and test if similar trips cluster in time or space.
+* **Not the full database.** Pipelines use a **30% stratified sample** of the full data, so results are for that slice, not every row in the raw release.
+* **Features we don’t have.** No rider ID, trip history, or driver traits—only trip-level fields—so the ceiling on prediction may be limited.
 
 ---
 
@@ -242,26 +242,26 @@ At 0.15: precision ~0.221, recall ~0.659, accuracy ~0.583, F1 ~0.331 (see notebo
 
 **Second model vs first**
 
-**Model 2 (SVD + supervised).** We first reduced **39** features to **20** with **SVD**. On top of that we ran (1) **weighted logistic regression** on the full reduced train/test set—test **AUROC ~0.64**, **accuracy ~60%**—and (2) **XGBoost** on a **20% subsample** of reduced rows, with hyperparameter tuning—about **0.68** ROC-AUC and **0.27** PR-AUC on that subsample’s test portion.
+* **Model 2 (SVD + supervised).** We first reduced **39** features to **20** with **SVD**. On top of that we ran (1) **weighted logistic regression** on the full reduced train/test set—test **AUROC ~0.64**, **accuracy ~60%**—and (2) **XGBoost** on a **20% subsample** of reduced rows, with hyperparameter tuning—about **0.68** ROC-AUC and **0.27** PR-AUC on that subsample’s test portion.
 
-**Model 1.** **RF2** on **all 39** features without SVD still lands around **0.65** ROC-AUC on its test set—so the best tree model on full features and the tuned boosted model on SVD features are in a similar ballpark, while plain LR on 20 SVD directions is a bit behind.
+* **Model 1.** **RF2** on **all 39** features without SVD still lands around **0.65** ROC-AUC on its test set—so the best tree model on full features and the tuned boosted model on SVD features are in a similar ballpark, while plain LR on 20 SVD directions is a bit behind.
 
 **What to try next**
 
-- Try a **different number of SVD components** (not only 20).
-- Run **boosting on all reduced-dimension rows** (not only 20%) if the cluster can handle it.
-- Adjust **thresholds and class weights** depending on whether you care more about catching tippers (**recall**) or precision.
-- Use **time- or zone-based splits** to check that results hold when the test period or area is new.
+- Try a **different number of SVD components** (It appears we could further reduce this without losing much if any variance).
+- Run **boosting on all reduced-dimension rows** (not only 20%). Using more of the data available would likely improve results.
+- Adjust **thresholds and class weights** to further improve the model's ability to handle class imbalance without losing precision.
+- Use **time- or zone-based splits** to check that results generalize to new areas or time-periods.
 
-**Big data: how the work actually went**
+**Big data: how using SDSC made this analysis possible**
 
-The project starts from on the order of **745 million** trips—far more than a single machine can comfortably clean, featurize, and model end-to-end. **Spark** was the turning point: the same pipeline we would have wanted on a laptop (dedupe, aggregate, impute, scale, encode, assemble vectors, split, SVD, train classifiers) could run **across many workers**, so the problem became tractable instead of impossible.
+The project starts from on the order of **745 million** trips—far more than a single machine can comfortably clean, featurize, and model end-to-end. **Spark** enabled us to run the full suite of operations that we wanted (dedupe, aggregate, impute, scale, encode, assemble vectors, split, SVD, train classifiers) by making these operations run **across many workers**, this distributed workflow allows us to do on a cluster what we couldn't do on a single machine.
 
-Once we were on a cluster, the **shape of the work** changed. Heavy steps—wide shuffles on deduplication and group-bys, training random forests, computing SVD—were no longer “wait overnight and hope”; they became jobs we could **parallelize**. When RAM still wasn’t enough, pointing **temporary and shuffle data** at fast **scratch** storage let stages spill to disk instead of crashing. So distributed computing didn’t remove engineering effort; it moved the bottleneck to **configuration** (executors, memory, **shuffle partitions**) and to **stability** (avoiding OOM).
+Once we were on a cluster, the **shape of the work** changed. Heavy steps—wide shuffles like our deduplication and model training were **parallelized**, so instead of waiting overnight and hoping for the best we could track progress over the course of a couple hours or less in most cases. When, even despite the cluster, we ran into memory errors, we were forced to consider optimization and re-design our pipeline and operations to be more mindful of **how** we tackled problems.
 
-We also learned to **treat intermediates as assets**. Writing **vectorized features**, **train/test splits**, and **SVD factors** to **Parquet** meant we paid the cost of the hardest transforms once and could iterate on models without rebuilding everything from raw data. That pattern—compute once, reuse many times—is as important as the algorithms themselves at this scale.
+We also learned to **treat intermediates as assets**. Writing **vectorized features**, **train/test splits**, and **SVD factors** to **Parquet** meant we paid the cost of the hardest transforms once and could iterate on models without rebuilding everything from raw data. This became a very helpful tool in allowing us to work better as a team, reducing redundant efforts.
 
-**Where this could go next** follows naturally from that setup: run **boosting on all reduced-dimension rows** (not only a subsample), try **GBT** or stronger **imbalance-aware** objectives, add **zone/hour/provider** aggregates, use **clustering** on the SVD space for segmentation, train on **more than 30%** of the data if resources allow, and stress-test with **time- or geography-based splits** and **cross-validation** so scores reflect real deployment shifts.
+From here, we would want to run **boosting on all reduced-dimension rows** (not only a subsample), try **GBT** or stronger **imbalance-aware** objectives, add **zone/hour/provider** aggregates or external data, use **clustering** on the SVD space for segmentation, and stress-test with **time- or geography-based splits** and **cross-validation** so scores reflect real deployment shifts.
 
 ---
 
